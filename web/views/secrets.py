@@ -60,7 +60,7 @@ class GetAllSecrets(Resource):
                         status=(200 if len(result) > 0 else 404),
                         mimetype='application/json')
 
-    @api.response(201, 'Secret Created')
+    @api.response(201, 'Secret Created', secret_model)
     @api.response(400, 'Bad Response')
     @api.expect(secret_model_create)
     def post(self):

@@ -15,6 +15,14 @@ event_model = api.model('EventModel', {
     'SecretId': fields.String(description='ID of the secret contained in the Event'),
 })
 
+def parse_to_event(row):
+    return {
+        'Id': row[0],
+        'EventCode': row[1],
+        'Timestamp': row[2].isoformat(),
+        'SecretId': row[3]
+    }
+
 
 @api.route("/")
 class GetAllEvents(Resource):
@@ -25,11 +33,12 @@ class GetAllEvents(Resource):
             404: "No Events Found",
         },
     )
-    @api.marshal_list_with(event_model)
+    @api.response(200, "Event Data Found", event_model)
+    @api.response(400, "No Events Found")
     def get(self):
-        r = db_session.execute(select(Event).from_statement(text("Select * from vault.Events;"))).scalars().all()
-        return Response(response=json.dumps(jsonify([i.toDict() for i in r])),
-                        status=(200 if len(r) > 0 else 404),
+        result = db_session.execute(text("Select * from vault.Events;")).all()
+        return Response(response=json.dumps([parse_to_event(r) for r in result]),
+                        status=(200 if len(result) > 0 else 404),
                         mimetype='application/json')
 
 
@@ -37,15 +46,12 @@ class GetAllEvents(Resource):
 class GetAllEvents(Resource):
     @api.doc(
         "Get Events for a Specific Secret ID",
-        responses={
-            200: "Event Data Found",
-            404: "No Events Found",
-        },
     )
-    @api.marshal_list_with(event_model)
+    @api.response(200, "Event Data Found", event_model)
+    @api.response(400, "No Events Found")
     def get(self, secretId):
-        stmt = select(Event).from_statement(text("Select * from vault.Events where SecretId = :id;"))
-        r = db_session.execute(stmt, {"id": secretId}).scalars().all()
-        return Response(response=json.dumps([i.toDict() for i in r]),
-                            status=(200 if len(r) > 0 else 404),
+        stmt = text("Select * from vault.Events where SecretId = :id;")
+        result = db_session.execute(stmt, {"id": secretId}).all()
+        return Response(response=json.dumps([parse_to_event(r) for r in result]),
+                            status=(200 if len(result) > 0 else 404),
                             mimetype='application/json')

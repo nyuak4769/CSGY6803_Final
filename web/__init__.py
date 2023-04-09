@@ -3,11 +3,10 @@ from flask import Flask, session, g, render_template
 from flask_restx import Api
 from flask import Blueprint
 from flask_wtf.csrf import CSRFProtect
+import os
 
 app = Flask(__name__)
 app.config['RESTX_MASK_SWAGGER'] = False
-csrf = CSRFProtect()
-csrf.init_app(app)
 
 blueprint = Blueprint('api', __name__, url_prefix='/api/v1')
 api = Api(blueprint,
@@ -16,8 +15,8 @@ api = Api(blueprint,
           description='A proof of concept vault service',
           )
 
-from .views import events
-from .views import secrets
+from views import events
+from views import secrets
 
 app.register_blueprint(blueprint)
 api.add_namespace(events.api)
@@ -26,3 +25,7 @@ api.add_namespace(secrets.api)
 @app.route('/')
 def do_redirect():
     return flask.redirect('/api/v1')
+
+
+if __name__ == "__main__":
+    app.run()
