@@ -6,20 +6,7 @@ from database import db_session
 from flask_restx import fields, Resource, Namespace
 import uuid
 
-api = Namespace('policy', "Policy related operations")
-
-rotation_policy_model_create = api.model('Rotation Policy Creation', {
-    'description': fields.String(description='Description of the Policy'),
-    'title': fields.String(description='Name of the Policy'),
-    'hours': fields.String(description='Hours after which to rotate the secret')
-})
-
-rotation_policy_model = api.model('Rotation Policy', {
-    'id': fields.String(description='ID of the Policy'),
-    'description': fields.String(description='Description of the Policy'),
-    'title': fields.String(description='Name of the Policy'),
-    'hours': fields.String(description='Hours after which to rotate the secret')
-})
+api = Namespace('user_policy', "Policy related operations")
 
 permission_policy_model_create = api.model('Permission Policy Creation', {
     'description': fields.String(description='Description of the Policy'),
