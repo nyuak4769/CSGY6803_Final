@@ -2,8 +2,6 @@ import flask
 from flask import Flask, session, g, render_template
 from flask_restx import Api
 from flask import Blueprint
-from flask_wtf.csrf import CSRFProtect
-import os
 
 app = Flask(__name__)
 app.config['RESTX_MASK_SWAGGER'] = False
@@ -17,10 +15,13 @@ api = Api(blueprint,
 
 from views import events
 from views import secrets
+from views import permission_policies
 
 app.register_blueprint(blueprint)
 api.add_namespace(events.api)
 api.add_namespace(secrets.api)
+api.add_namespace(permission_policies.api)
+
 
 @app.route('/')
 def do_redirect():
