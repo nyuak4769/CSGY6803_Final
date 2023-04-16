@@ -16,11 +16,13 @@ api = Api(blueprint,
 from views import events
 from views import secrets
 from views import permission_policies
+from views import rotation_policies
 
 app.register_blueprint(blueprint)
 api.add_namespace(events.api)
 api.add_namespace(secrets.api)
 api.add_namespace(permission_policies.api)
+api.add_namespace(rotation_policies.api)
 
 
 @app.route('/')
