@@ -16,6 +16,15 @@ join RotationPolicies
     on Secrets.RotationPolicyID = RotationPolicies.Id
 )$$
 
+create view if not exists v_SecretDetails as
+(
+    Select Secrets.Id, Secrets.Description, nsr.nextRotation, rp.Title, pp.idlist from vault.Secrets
+    join (select SecretId, nextRotation from vault.v_NextSecretRotationTime) as nsr on
+    Secrets.Id=nsr.SecretId join vault.RotationPolicies as rp on rp.Id=Secrets.RotationPolicyID
+    join (select SecretId, GROUP_CONCAT(PermissionPolicyId) idlist FROM SecretPermissions group by SecretId) as pp on
+    pp.SecretId = Secrets.Id
+)$$
+
 create view if not exists v_UserPermissionsForSecret as
 (
 select Users.Id as UserId, Users.UserName, SP.PermissionPolicyId as PermissionPolicyId, PP.Title as PermissionPolicyTitle, SecretId, S.Description as SecretDescription

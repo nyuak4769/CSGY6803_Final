@@ -4,6 +4,7 @@ from sqlalchemy import text
 from flask import Response, request
 from database import db_session
 from flask_restx import fields, Resource, Namespace
+from webauth import auth
 import uuid
 
 api = Namespace('user_policy', "Policy related operations")
@@ -42,9 +43,11 @@ class GetAllPolicies(Resource):
     )
     @api.response(200, 'Success', permission_policy_model)
     @api.response(404, 'No Policies Found', permission_policy_model)
+    @api.doc(security="basicAuth")
+    @auth.login_required
     def get(self):
         result = db_session.execute(text(
-            "Select * from vault.PermissionPolicies"
+            "Select * from vault.PermissionPolicies limit 100"
         )).all()
         return Response(response=json.dumps([parse_to_permission_policy(r) for r in result]),
                         status=(200 if len(result) > 0 else 404),
@@ -53,6 +56,8 @@ class GetAllPolicies(Resource):
     @api.response(201, 'Policy Created', permission_policy_model)
     @api.response(400, 'Bad Response')
     @api.expect(permission_policy_model_create)
+    @api.doc(security="basicAuth")
+    @auth.login_required
     def post(self):
         try:
             json_data = request.get_json(force=True)
@@ -88,6 +93,8 @@ class GetSecret(Resource):
     )
     @api.response(200, 'Success', permission_policy_model)
     @api.response(404, 'No Secret Found')
+    @api.doc(security="basicAuth")
+    @auth.login_required
     def get(self, policy_id):
         result = get_permission_policy(policy_id)
         return Response(response=json.dumps([parse_to_permission_policy(r) for r in result]),
@@ -99,6 +106,8 @@ class GetSecret(Resource):
     )
     @api.response(204, 'Policy Deleted')
     @api.response(404, 'No Policy Found')
+    @api.doc(security="basicAuth")
+    @auth.login_required
     def delete(self, policy_id):
         old_secret = get_permission_policy(policy_id)
         if len(old_secret) == 0:

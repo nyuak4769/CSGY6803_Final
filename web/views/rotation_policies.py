@@ -1,9 +1,11 @@
 import json
 
+import sqlalchemy.exc
 from sqlalchemy import text
 from flask import Response, request
 from database import db_session
 from flask_restx import fields, Resource, Namespace
+from webauth import auth
 import uuid
 
 api = Namespace('rotation_policy', "Rotation Policy related operations")
@@ -33,8 +35,8 @@ def get_permission_policy(policy_id):
 def parse_to_permission_policy(row):
     return {
         'id': row[0],
-        'description': row[1],
-        'title': row[2],
+        'description': row[2],
+        'title': row[1],
         'hours': row[3]
     }
 
@@ -46,6 +48,8 @@ class GetAllPolicies(Resource):
     )
     @api.response(200, 'Success', rotation_policy_model)
     @api.response(404, 'No Policies Found')
+    @api.doc(security="basicAuth")
+    @auth.login_required
     def get(self):
         result = db_session.execute(text(
             "Select * from vault.RotationPolicies"
@@ -57,6 +61,8 @@ class GetAllPolicies(Resource):
     @api.response(201, 'Policy Created', rotation_policy_model)
     @api.response(400, 'Bad Response')
     @api.expect(rotation_policy_model_create)
+    @api.doc(security="basicAuth")
+    @auth.login_required
     def post(self):
         try:
             json_data = request.get_json(force=True)
@@ -94,6 +100,8 @@ class GetSecret(Resource):
     )
     @api.response(200, 'Success', rotation_policy_model)
     @api.response(404, 'No Secret Found')
+    @api.doc(security="basicAuth")
+    @auth.login_required
     def get(self, policy_id):
         result = get_permission_policy(policy_id)
         return Response(response=json.dumps([parse_to_permission_policy(r) for r in result]),
@@ -105,17 +113,24 @@ class GetSecret(Resource):
     )
     @api.response(204, 'Policy Deleted')
     @api.response(404, 'No Policy Found')
+    @api.doc(security="basicAuth")
+    @auth.login_required
     def delete(self, policy_id):
         old_secret = get_permission_policy(policy_id)
         if len(old_secret) == 0:
             return Response(status=404,
                             mimetype='application/json')
 
-        db_session.execute(text(
-            "Delete from vault.RotationPolicies where Id = :uuid;"),
-            {"uuid": policy_id}
-        )
-        db_session.commit()
+        try:
+            db_session.execute(text(
+                "Delete from vault.RotationPolicies where Id = :uuid;"),
+                {"uuid": policy_id}
+            )
+            db_session.commit()
+        except sqlalchemy.exc.IntegrityError:
+            return Response(response=json.dumps({"error": "Permission policy still in use. Please delete any secrets still using this policy and try again."}),
+                            status=400,
+                            mimetype='application/json')
 
         return Response(status=204,
                         mimetype='application/json')

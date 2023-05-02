@@ -93,7 +93,6 @@ CREATE TABLE IF NOT EXISTS `Events`
 
 CREATE TABLE IF NOT EXISTS `SecretPermissions`
 (
-    `Id` varchar(128) NOT NULL,
     `SecretId`     varchar(128) NOT NULL,
     `PermissionPolicyId` varchar(128)  NOT NULL,
     CONSTRAINT `FK_SecretPermissions_Secrets`
@@ -113,7 +112,7 @@ CREATE TABLE IF NOT EXISTS `UserPermissions`
 (
     `UserId`     varchar(128) NOT NULL,
     `PermissionPolicyId` varchar(128)  NOT NULL,
-    CONSTRAINT `FK_UserPermissions_Secrets`
+    CONSTRAINT `FK_UserPermissions_Users`
         FOREIGN KEY (`UserId`) REFERENCES Users (`Id`)
             ON UPDATE RESTRICT
             ON DELETE RESTRICT,

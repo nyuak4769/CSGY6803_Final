@@ -6,11 +6,11 @@ insert into EventCodes (Code, Description) VALUES ('C001', 'Create');
 insert into EventCodes (Code, Description) VALUES ('U001', 'Rotation');
 insert into EventCodes (Code, Description) VALUES ('R001', 'Retrieval');
 
-insert into Secrets (`Id`, `Description`, `value`, `RotationPolicyID`)
-values (uuid(), 'Secret 1', 'abc1234', (select Id from RotationPolicies where `Title` = "My Policy"));
-
-insert into Secrets (`Id`, `Description`, `value`, `RotationPolicyID`)
-values (uuid(), 'Secret 2',  'dec5678', (select Id from RotationPolicies where `Title` = "My Policy"));
+# insert into Secrets (`Id`, `Description`, `value`, `RotationPolicyID`)
+# values (uuid(), 'Secret 1', 'abc1234', (select Id from RotationPolicies where `Title` = "My Policy"));
+#
+# insert into Secrets (`Id`, `Description`, `value`, `RotationPolicyID`)
+# values (uuid(), 'Secret 2',  'dec5678', (select Id from RotationPolicies where `Title` = "My Policy"));
 
 insert into PermissionPolicies (Id, Title, Description) VALUES (uuid(), 'Policy 1', 'Permission Policy 1');
 insert into PermissionPolicies (Id, Title, Description) VALUES (uuid(), 'Policy 2', 'Permission Policy 2');
