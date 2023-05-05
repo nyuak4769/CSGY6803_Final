@@ -34,3 +34,13 @@ BEGIN
     Delete from vault.UserPermissions where UserPermissions.UserId = @userID;
     Delete from vault.Users where Users.Id = @userID;
 end $$
+
+CREATE PROCEDURE usp_CreateNewSecret (IN `secretId` varchar(128), IN `secretDescription` varchar(128),
+    IN `secretValue` varchar(128), IN `userPolicyName` varchar(128), IN `rotationPolicyName` varchar(128))
+    NO SQL
+BEGIN
+    SET @rotationPolicyID = (select Id from vault.RotationPolicies where Title = rotationPolicyName limit 1);
+    SET @userPolicyId = (select Id from vault.PermissionPolicies where Title = userPolicyName limit 1);
+    Insert into vault.Secrets values (secretId, secretDescription, secretValue, @RotationPolicyID);
+    Insert into vault.SecretPermissions values (SecretId, @userPolicyId);
+end $$
