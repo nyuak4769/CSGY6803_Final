@@ -28,9 +28,17 @@ create view if not exists v_SecretDetails as
 create view if not exists v_UserPermissionsForSecret as
 (
 select Users.Id as UserId, Users.UserName, SP.PermissionPolicyId as PermissionPolicyId, PP.Title as PermissionPolicyTitle, SecretId, S.Description as SecretDescription
-from Users
-join UserPermissions UP on Users.Id = UP.UserId
-join SecretPermissions SP on UP.PermissionPolicyId = SP.PermissionPolicyId
-join PermissionPolicies PP on SP.PermissionPolicyId = PP.Id
-join Secrets S on S.Id = SP.SecretId
+from Secrets as S
+left join SecretPermissions SP on S.Id = SP.SecretId
+left join PermissionPolicies PP on SP.PermissionPolicyId = PP.Id
+left join UserPermissions UP on PP.Id = UP.PermissionPolicyId
+left join Users on UP.UserId = Users.Id
+)$$
+
+create view if not exists v_SecretEvents as
+(
+select E.Id as 'Id', EC.Description as 'Description', E.Timestamp as 'Timestamp', E.SecretId as 'SecretId'
+from Events E
+join EventCodes EC on EC.Code = E.EventCode
+order by Timestamp desc
 )$$
