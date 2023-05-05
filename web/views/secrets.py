@@ -7,6 +7,7 @@ from flask import Response, request
 from database import db_session
 from flask_restx import fields, Resource, Namespace
 from webauth import auth
+from views.events import parse_to_event, event_model
 import uuid
 
 api = Namespace('secret', "Secret related operations")
@@ -22,10 +23,11 @@ def parse_to_secret(row):
     }
 
 
-def get_secret_info(secret_id):
+def get_secret_info(secret_id, user_name):
     result = db_session.execute(text(
-        "Select * from v_SecretDetails where Id = :id"
-    ), {"id": secret_id}).all()
+        "Select d.* from v_SecretDetails as d join v_UserPermissionsForSecret as v on d.Id = "
+        "v.SecretId and v.UserName = :userName where d.Id = :id "
+    ), {"id": secret_id, "userName": user_name}).all()
     return result
 
 
@@ -52,6 +54,15 @@ def get_user_policies_for_secret(secret_id):
     return result
 
 
+def get_secrets_for_user(user_name):
+    result = db_session.execute(text(
+        "Select SecretId from vault.v_UserPermissionsForSecret where UserName = :userName"
+    ), {
+        "userName": user_name
+    }).all()
+    return result
+
+
 secret_model = api.model('Secrets', {
     'id': fields.String(description='ID of the Secret'),
     'description': fields.String(description='Description of the Secret'),
@@ -62,7 +73,8 @@ secret_model = api.model('Secrets', {
 
 secret_model_create = api.model('Secret Creation', {
     'description': fields.String(description='Description of the Secret'),
-    'policyname': fields.String(description='Name of the Rotation Policy for the Secret'),
+    'rotationPolicyName': fields.String(description='Name of the Rotation Policy for the Secret'),
+    'userPolicyTitle': fields.String(description='Title of the User Policy for the Secret'),
     'value': fields.String(description='Value of the secret to store'),
 })
 
@@ -70,6 +82,7 @@ secret_model_patch = api.model('Secret Policy', {
     'rotationpolicy': fields.String(description='Rotation Policy ID'),
     'userpolicies': fields.String(description='Comma Separated list of Policy ID for users')
 })
+
 
 @api.route("/")
 class GetAllSecrets(Resource):
@@ -82,8 +95,9 @@ class GetAllSecrets(Resource):
     @auth.login_required
     def get(self):
         result = db_session.execute(text(
-            "Select * from v_SecretDetails"
-        )).all()
+            "Select * from v_SecretDetails as d join v_UserPermissionsForSecret p on d.Id = p.SecretId and p.UserName "
+            "= :userName "
+        ), {"userName": auth.current_user()}).all()
         return Response(response=json.dumps([parse_to_secret(r) for r in result]),
                         status=(200 if len(result) > 0 else 404),
                         mimetype='application/json')
@@ -98,26 +112,27 @@ class GetAllSecrets(Resource):
             json_data = request.get_json(force=True)
             description = json_data['description']
             value = json_data['value']
-            rotation_policy_name = json_data['policyname']
+            rotation_policy_name = json_data['rotationPolicyName']
+            user_policy_name = json_data['userPolicyTitle']
             secret_uuid = uuid.uuid4()
             db_session.execute(text(
-                "Insert into vault.Secrets values (:uuid, :description, :value, "
-                "(select Id from vault.RotationPolicies where Title = :policy_name limit 1));"), {
-                "uuid": secret_uuid,
+                "CALL usp_CreateNewSecret(:uuid, :description, :value, :user_policy, :rotation_policy)"), {
+                "uuid": str(secret_uuid),
                 "description": description,
                 "value": value,
-                "policy_name": rotation_policy_name
+                "rotation_policy": rotation_policy_name,
+                "user_policy": user_policy_name
             })
             db_session.commit()
-            return Response(response=json.dumps(parse_to_secret(get_secret_info(secret_uuid)[0])),
-                            status=201,
+            return Response(status=201,
                             mimetype='application/json')
         except KeyError as e:
             return Response(response=json.dumps({"error": "A value for {0} in the body was not included. "
                                                           "Please resubmit your request".format(e)}),
                             status=400,
                             mimetype='application/json')
-        except Exception:
+        except Exception as e:
+            logging.exception(e)
             return Response(response=json.dumps({"error": "An error occurred while creating the secret. Please check "
                                                           "the logs."}),
                             status=500,
@@ -134,7 +149,7 @@ class GetSecretMetadata(Resource):
     @api.doc(security="basicAuth")
     @auth.login_required
     def get(self, secret_id):
-        result = get_secret_info(secret_id)
+        result = get_secret_info(secret_id, auth.current_user())
         return Response(response=json.dumps([parse_to_secret(r) for r in result]),
                         status=(200 if len(result) > 0 else 404),
                         mimetype='application/json')
@@ -147,7 +162,7 @@ class GetSecretMetadata(Resource):
     @api.doc(security="basicAuth")
     @auth.login_required
     def delete(self, secret_id):
-        old_secret = get_secret_info(secret_id)
+        old_secret = get_secret_info(secret_id, auth.current_user())
         if len(old_secret) == 0:
             return Response(status=404,
                             mimetype='application/json')
@@ -207,6 +222,7 @@ class GetSecretMetadata(Resource):
         return Response(status=204,
                         mimetype='application/json')
 
+
 @api.route("/<string:secret_id>/retrieve")
 class GetSecretValue(Resource):
     @api.doc(
@@ -215,7 +231,7 @@ class GetSecretValue(Resource):
     @api.doc(security="basicAuth")
     @auth.login_required
     def get(self, secret_id):
-        old_secret = get_secret_info(secret_id)
+        old_secret = get_secret_info(secret_id, auth.current_user())
         if len(old_secret) == 0:
             return Response(status=404,
                             mimetype='application/json')
@@ -229,4 +245,25 @@ class GetSecretValue(Resource):
 
         return Response(status=200,
                         response=json.dumps({"password": result[0][1]}),
+                        mimetype='application/json')
+
+
+@api.route("/<string:secret_id>/events")
+class GetSecretsEvents(Resource):
+    @api.doc(
+        "Get Events for a Specific Secret ID",
+    )
+    @api.response(200, "Event Data Found", event_model)
+    @api.response(400, "No Events Found")
+    @api.doc(security="basicAuth")
+    @auth.login_required
+    def get(self, secret_id):
+        old_secret = get_secret_info(secret_id, auth.current_user())
+        if len(old_secret) == 0:
+            return Response(status=404,
+                            mimetype='application/json')
+        stmt = text("Select * from vault.v_SecretEvents where SecretId = :id order by Timestamp desc limit 100;")
+        result = db_session.execute(stmt, {"id": secret_id}).all()
+        return Response(response=json.dumps([parse_to_event(r) for r in result]),
+                        status=(200 if len(result) > 0 else 404),
                         mimetype='application/json')
