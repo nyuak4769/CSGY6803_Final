@@ -38,24 +38,10 @@ class GetAllEvents(Resource):
     @api.doc(security="basicAuth")
     @auth.login_required
     def get(self):
-        result = db_session.execute(text("Select * from vault.Events limit 100;")).all()
-        return Response(response=json.dumps([parse_to_event(r) for r in result]),
+        from views.secrets import get_secrets_for_user
+        result = db_session.execute(text("Select * from vault.v_SecretEvents limit 100;")).all()
+        secrets = list(i[0] for i in get_secrets_for_user(auth.current_user()))
+        filtered_events = list(i for i in result if i[3] in secrets)
+        return Response(response=json.dumps([parse_to_event(r) for r in filtered_events]),
                         status=(200 if len(result) > 0 else 404),
                         mimetype='application/json')
-
-
-@api.route("/<string:secretId>")
-class GetAllEvents(Resource):
-    @api.doc(
-        "Get Events for a Specific Secret ID",
-    )
-    @api.response(200, "Event Data Found", event_model)
-    @api.response(400, "No Events Found")
-    @api.doc(security="basicAuth")
-    @auth.login_required
-    def get(self, secretId):
-        stmt = text("Select * from vault.Events where SecretId = :id order by Timestamp desc limit 100;")
-        result = db_session.execute(stmt, {"id": secretId}).all()
-        return Response(response=json.dumps([parse_to_event(r) for r in result]),
-                            status=(200 if len(result) > 0 else 404),
-                            mimetype='application/json')
