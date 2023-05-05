@@ -51,9 +51,9 @@ def parse_to_user(row):
 
 def get_policies():
     result = db_session.execute(text(
-        "Select Id from vault.PermissionPolicies"
+        "Select Id, Title from vault.PermissionPolicies"
     )).all()
-    return result
+    return {i[1]: i[0] for i in result}
 
 
 @api.route("/")
@@ -182,14 +182,14 @@ class GetUser(Resource):
             db_session.commit()
         if 'policies' in json_data:
             policies = str(json_data['policies']).split(",")
-            active_policies = list(i[0] for i in get_policies())
+            active_policies = get_policies()
             for p in policies:
-                if p in active_policies:
+                if p in list(active_policies.keys()):
                     db_session.execute(text("Replace into vault.UserPermissions (UserId, PermissionPolicyId) VALUES ("
                                        ":userId, :permissionId)"),
                                        {
                                            "userId": old_user[0][0],
-                                           "permissionId": p
+                                           "permissionId": active_policies[p]
                                        })
         db_session.commit()
         return Response(response=json.dumps(parse_to_user(get_user(user_name)[0])),
