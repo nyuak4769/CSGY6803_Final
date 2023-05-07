@@ -1,5 +1,5 @@
 DELIMITER $$
-CREATE OR REPLACE FUNCTION udf_TimeToSecretExpiration (`secretDesc` VARCHAR(128)) RETURNS FLOAT
+CREATE OR REPLACE FUNCTION udf_TimeToSecretExpiration (`secretId` VARCHAR(128)) RETURNS FLOAT
 BEGIN
     SET @nextRotation = (select date_add(LastRotation.Timestamp, interval RotationPolicies.hours HOUR) as nextRotation
                          from (select `SecretId` as SecretId, max(`timestamp`) as Timestamp
@@ -11,7 +11,7 @@ BEGIN
                              on Secrets.Id=LastRotation.SecretId
                          join RotationPolicies
                              on Secrets.RotationPolicyID = RotationPolicies.Id
-                         where Secrets.Description = secretDesc
+                         where Secrets.Id = secretId
                          );
     RETURN UNIX_TIMESTAMP(@nextRotation) - UNIX_TIMESTAMP(CURRENT_TIMESTAMP);
 END$$
