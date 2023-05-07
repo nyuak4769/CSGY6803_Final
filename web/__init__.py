@@ -30,6 +30,7 @@ from views import secrets
 from views import permission_policies
 from views import rotation_policies
 from views import users
+from views import reports
 
 app.register_blueprint(blueprint)
 api.add_namespace(events.api)
@@ -37,6 +38,7 @@ api.add_namespace(secrets.api)
 api.add_namespace(permission_policies.api)
 api.add_namespace(rotation_policies.api)
 api.add_namespace(users.api)
+api.add_namespace(reports.api)
 
 try:
     db_session.execute(text('SELECT 1'))
