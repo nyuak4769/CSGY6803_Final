@@ -83,6 +83,10 @@ secret_model_patch = api.model('Secret Policy', {
     'userpolicies': fields.String(description='Comma Separated list of Policy ID for users')
 })
 
+secret_model_ttl = api.model('Secret Rotation Time', {
+    'secondsuntilrotate': fields.Float(description='Number of seconds until password is rotated')
+})
+
 
 @api.route("/")
 class GetAllSecrets(Resource):
@@ -245,6 +249,29 @@ class GetSecretValue(Resource):
 
         return Response(status=200,
                         response=json.dumps({"password": result[0][1]}),
+                        mimetype='application/json')
+
+
+@api.route("/<string:secret_id>/rotatetime")
+class GetSecretValue(Resource):
+    @api.doc(
+        "Get number of seconds until password is rotated",
+    )
+    @api.doc(security="basicAuth")
+    @auth.login_required
+    def get(self, secret_id):
+        old_secret = get_secret_info(secret_id, auth.current_user())
+        if len(old_secret) == 0:
+            return Response(status=404,
+                            mimetype='application/json')
+
+        result = db_session.execute(text(
+            "select udf_TimeToSecretExpiration(:uuid);"),
+            {"uuid": secret_id}
+        ).all()
+
+        return Response(status=200,
+                        response=json.dumps({"secondsuntilrotate": result[0][0]}),
                         mimetype='application/json')
 
 
