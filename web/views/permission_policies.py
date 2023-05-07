@@ -1,10 +1,12 @@
 import json
+import logging
 
 from sqlalchemy import text
 from flask import Response, request
 from database import db_session
 from flask_restx import fields, Resource, Namespace
 from webauth import auth
+import sqlalchemy
 import uuid
 
 api = Namespace('user_policy', "Policy related operations")
@@ -114,11 +116,18 @@ class GetSecret(Resource):
             return Response(status=404,
                             mimetype='application/json')
 
-        db_session.execute(text(
-            "Delete from vault.PermissionPolicies where Id = :uuid;"),
-            {"uuid": policy_id}
-        )
-        db_session.commit()
+        try:
+            db_session.execute(text(
+                "Delete from vault.PermissionPolicies where Id = :uuid;"),
+                {"uuid": policy_id}
+            )
+            db_session.commit()
+        except sqlalchemy.exc.IntegrityError as e:
+            logging.error(str(e))
+            return Response(response=json.dumps({"error": "Permission policy still in use. Please remove this "
+                                                          "permission from all users before deleting."}),
+                            status=400,
+                            mimetype='application/json')
 
         return Response(status=204,
                         mimetype='application/json')
