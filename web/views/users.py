@@ -191,6 +191,11 @@ class GetUser(Resource):
                                            "userId": old_user[0][0],
                                            "permissionId": active_policies[p]
                                        })
+            if json_data['policies'] == '':
+                db_session.execute(text("Delete from vault.UserPermissions where UserId = :userId;"),
+                                   {
+                                       "userId": old_user[0][0]
+                                   })
         db_session.commit()
         return Response(response=json.dumps(parse_to_user(get_user(user_name)[0])),
                         status=200,
