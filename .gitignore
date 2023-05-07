@@ -1,0 +1,11 @@
+**.hcl
+**.zip
+**.tfstate
+*.terraform
+*.idea
+*.iml
+**.DS_STORE**
+**venv**
+**__pycache**
+**.scannerwork**
+sonar_scan.sh

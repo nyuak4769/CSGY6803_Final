@@ -1,0 +1,9 @@
+use vault;
+DROP TABLE IF EXISTS SecretPermissions;
+DROP TABLE IF EXISTS Events;
+DROP TABLE IF EXISTS UserPermissions;
+DROP TABLE IF EXISTS Users;
+DROP TABLE IF EXISTS EventCodes;
+DROP TABLE IF EXISTS PermissionPolicies;
+DROP TABLE IF EXISTS Secrets;
+DROP TABLE IF EXISTS RotationPolicies;
